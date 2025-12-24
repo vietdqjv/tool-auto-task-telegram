@@ -1,0 +1,13 @@
+# requirements.txt
+aiogram>=3.4
+APScheduler>=3.10
+SQLAlchemy[asyncio]>=2.0
+asyncpg
+aiosqlite
+aioredis
+httpx
+pydantic-settings>=2.0
+alembic
+cachetools
+loguru
+python-dotenv

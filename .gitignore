@@ -65,7 +65,36 @@ docs/screenshots/*
 docs/research/*
 logs.txt
 test-ck
-__pycache__
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
+# mypy
+.mypy_cache/
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Alembic migrations (keep .gitkeep)
+alembic/versions/*.py
+!alembic/versions/.gitkeep
 
 # CK meta commands
 prompt.md
