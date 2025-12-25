@@ -4,8 +4,12 @@ Multi-purpose Python Telegram bot with task scheduling, reminders, and database 
 
 ## Features
 
-- **Task Management**: Create, view, complete, and delete tasks via Telegram
-- **Reminders**: Schedule task reminders with APScheduler
+- **Personal Task Management**: Create, view, complete, and delete tasks via Telegram
+- **Group Task Management**: Assign, remind, submit, verify, and reassign tasks within groups
+- **Working Hours Enforcement**: Define specific working hours for task reminders
+- **Recurring Reminders**: Automated reminders during work hours
+- **Auto-Overdue Detection**: System automatically marks tasks as overdue
+- **Completed Task Cleanup**: Automatically clean up completed tasks after a configurable period
 - **FSM Conversations**: Multi-step task creation with state management
 - **Rate Limiting**: Request throttling per user
 - **Auto-registration**: Users registered on first message
@@ -76,8 +80,15 @@ docker-compose down
 |---------|-------------|
 | `/start` | Welcome message + menu |
 | `/help` | List all commands |
-| `/tasks` | View your tasks |
-| `/add` | Create new task (3-step FSM) |
+| `/mytasks` | View your personal tasks |
+| `/tasks` | View group tasks you are involved in |
+| `/add` | Create new personal task (3-step FSM) |
+| `/newtask` | Create new group task (multi-step FSM) |
+| `/done <task_id>` | Mark a personal task as completed |
+| `/submit <task_id>` | Submit a group task for verification |
+| `/verify <task_id>` | Verify a submitted group task (admin/verifier only) |
+| `/reject <task_id>` | Reject a submitted group task (admin/verifier only) |
+| `/reassign <task_id> <user_id>` | Reassign a group task to another user (admin/verifier only) |
 | `/status` | Bot status + task stats |
 | `/settings` | User preferences |
 
@@ -85,16 +96,32 @@ docker-compose down
 
 ```
 src/
-├── main.py              # Entry point
-├── core/                # Config, constants, exceptions
-├── database/            # Models, repositories, engine
-├── services/            # Business logic
-├── scheduler/           # APScheduler jobs
-└── bot/                 # Handlers, middlewares, keyboards
-docker/
-├── Dockerfile
-└── docker-compose.yml
-alembic/                 # Database migrations
+├── main.py                    # Entry point
+├── core/config.py             # Settings (working hours, timezone, reminder intervals)
+├── database/
+│   ├── models/task.py         # Task model with group task fields
+│   ├── models/user.py         # User model
+│   └── repositories/          # Data access layer
+├── services/
+│   ├── working-hours.py       # VN timezone working hours validation
+│   ├── group-task-service.py  # Group task CRUD + workflow
+│   ├── task-service.py        # Personal task service
+│   └── notification.py        # Telegram notification service
+├── scheduler/
+│   ├── manager.py             # APScheduler singleton
+│   └── jobs/
+│       ├── notify.py          # Personal task reminders
+│       └── group-task-reminder.py  # Group reminders, overdue, cleanup
+└── bot/
+    ├── handlers/
+    │   ├── commands.py        # /start, /help, /status
+    │   ├── tasks.py           # Personal task handlers
+    │   ├── group-tasks.py     # Group task commands
+    │   └── group-task-fsm.py  # Multi-step task creation
+    ├── keyboards/
+    │   ├── inline.py          # General keyboards
+    │   └── group-task-keyboards.py  # Group task keyboards
+    └── middlewares/           # Rate limiting, auth, session
 ```
 
 ## Development

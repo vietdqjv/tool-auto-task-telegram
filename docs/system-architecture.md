@@ -16,42 +16,32 @@
 
 ```
 src/
-├── bot/
-│   ├── app.py              # Bot init, dispatcher
-│   ├── handlers/
-│   │   ├── commands.py     # /start, /help, /status
-│   │   ├── tasks.py        # Task CRUD handlers
-│   │   └── callbacks.py    # Inline button callbacks
-│   ├── middlewares/
-│   │   └── auth.py         # User auth middleware
-│   └── keyboards/
-│       └── inline.py       # Keyboard builders
-├── scheduler/
-│   ├── manager.py          # APScheduler setup
-│   └── jobs/
-│       └── notify.py       # Notification jobs
-├── services/
-│   ├── task_service.py     # Task business logic
-│   ├── api_client.py       # External API wrapper
-│   └── notification.py     # Notification service
+├── main.py                    # Entry point
+├── core/config.py             # Settings (working hours, timezone, reminder intervals)
 ├── database/
-│   ├── engine.py           # Async engine, sessions
-│   ├── models/
-│   │   ├── user.py
-│   │   └── task.py
-│   └── repositories/
-│       ├── user_repo.py
-│       └── task_repo.py
-├── core/
-│   ├── config.py           # Pydantic settings
-│   ├── constants.py
-│   └── exceptions.py
-└── main.py                 # Entry point
-tests/
-alembic/                    # Migrations
-docker/
-├── Dockerfile
-└── docker-compose.yml
+│   ├── models/task.py         # Task model with group task fields
+│   ├── models/user.py         # User model
+│   └── repositories/          # Data access layer
+├── services/
+│   ├── working-hours.py       # VN timezone working hours validation
+│   ├── group-task-service.py  # Group task CRUD + workflow
+│   ├── task-service.py        # Personal task service
+│   └── notification.py        # Telegram notification service
+├── scheduler/
+│   ├── manager.py             # APScheduler singleton
+│   └── jobs/
+│       ├── notify.py          # Personal task reminders
+│       └── group-task-reminder.py  # Group reminders, overdue, cleanup
+└── bot/
+    ├── handlers/
+    │   ├── commands.py        # /start, /help, /status
+    │   ├── tasks.py           # Personal task handlers
+    │   ├── group-tasks.py     # Group task commands
+    │   └── group-task-fsm.py  # Multi-step task creation
+    ├── keyboards/
+    │   ├── inline.py          # General keyboards
+    │   └── group-task-keyboards.py  # Group task keyboards
+    └── middlewares/           # Rate limiting, auth, session
 ```
 
 ## Core Modules
@@ -60,10 +50,13 @@ docker/
 |--------|----------------|
 | `bot/handlers` | Process commands/callbacks, delegate to services |
 | `bot/middlewares` | Auth, rate limiting, logging |
-| `scheduler/manager` | APScheduler with SQLAlchemy job store |
-| `services/` | Business logic, external API calls |
-| `database/repositories` | Data access, abstract DB queries |
-| `core/config` | Env-based settings via pydantic |
+| `bot/keyboards` | Generate inline and reply keyboards |
+| `scheduler/manager` | APScheduler with SQLAlchemy job store for task reminders |
+| `scheduler/jobs` | Contains specific jobs like `group-task-reminder.py` and `notify.py` |
+| `services/` | Business logic for personal tasks, group tasks, working hours, and notifications |
+| `database/models` | Defines database models (User, Task) |
+| `database/repositories` | Data access layer for interacting with the database |
+| `core/config` | Environment-based settings via pydantic-settings |
 
 ## Configuration
 
@@ -114,20 +107,35 @@ COPY alembic/ ./alembic/
 CMD ["python", "-m", "src.main"]
 ```
 
-## Data Flow
+## Data Flow - Group Task Management
 
-```
-User -> Telegram -> aiogram Dispatcher -> Handlers -> Services -> Repos -> DB
-APScheduler -> Jobs -> Services -> Bot API (notifications)
+```mermaid
+graph TD
+    User -->|Telegram Message| BotHandlers_GroupTasks
+    BotHandlers_GroupTasks -->|Parse Command/Input| GroupTaskFSM
+    GroupTaskFSM -->|State Management| Redis
+    GroupTaskFSM -->|Create/Update Task| GroupTaskService
+    GroupTaskService -->|CRUD Operations| GroupTaskRepository
+    GroupTaskRepository -->|Database Interaction| Database
+
+    subgraph "Scheduler & Reminders"
+        APSchedulerManager -->|Schedule Jobs| GroupTaskReminderJob
+        GroupTaskReminderJob -->|Query Overdue/Upcoming Tasks| GroupTaskService
+        GroupTaskReminderJob -->|Send Notification| NotificationService
+    end
+
+    NotificationService -->|Telegram API| User
 ```
 
 ## Design Decisions
 
-1. **Repository Pattern** - Isolate DB; swap without changing services
-2. **Service Layer** - Thin handlers; reusable business logic
-3. **Async Everything** - Non-blocking I/O for high concurrency
-4. **Config via Env** - 12-factor app; same code across environments
-5. **Files <200 Lines** - Single responsibility; easy testing
+1.  **Repository Pattern** - Isolate DB interaction logic from business logic, allowing easy database swapping.
+2.  **Service Layer** - Centralize business logic, ensuring thin handlers and reusable code.
+3.  **Async Everything** - Non-blocking I/O operations for high concurrency and responsiveness.
+4.  **Config via Env** - Adhere to 12-factor app principles using pydantic-settings for environment-based configuration.
+5.  **Files <200 Lines** - Promote single responsibility and improve testability and maintainability.
+6.  **FSM for Multi-step Conversations** - Use aiogram's FSM for complex user interactions like task creation, ensuring a guided and robust experience.
+7.  **Dedicated Group Task Module** - Separate services, handlers, and keyboards for group tasks to maintain modularity and clear responsibility.
 
 ## Dependencies
 
@@ -141,4 +149,7 @@ aiosqlite
 httpx
 pydantic-settings>=2.0
 alembic
+redis>=5.0.1
+babel>=2.13.1
+loguru>=0.7.2
 ```

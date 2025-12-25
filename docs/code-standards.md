@@ -7,17 +7,19 @@
 ## Project Structure
 ```
 src/
-├── bot/              # Telegram bot handlers
-├── services/         # Business logic
-├── schedulers/       # Task scheduling
-├── integrations/     # External API clients
-├── database/         # DB models & migrations
-├── utils/            # Shared utilities
-└── config/           # Configuration management
+├── main.py                    # Entry point
+├── core/config.py             # Settings, constants, exceptions
+├── database/
+│   ├── models/                # SQLAlchemy models
+│   └── repositories/          # Data access layer
+├── services/                  # Business logic and external integrations
+├── scheduler/                 # APScheduler setup and jobs
+└── bot/                       # Telegram bot handlers, middlewares, keyboards
 ```
 
 ## Naming Conventions
-- Files: `kebab-case.py` (e.g., `task-scheduler.py`)
+- Files: `kebab-case.py` (e.g., `group-task-service.py`, `working-hours.py`)
+- Modules/Packages: `snake_case` (e.g., `src.core`, `src.services`)
 - Classes: `PascalCase`
 - Functions/variables: `snake_case`
 - Constants: `UPPER_SNAKE_CASE`
