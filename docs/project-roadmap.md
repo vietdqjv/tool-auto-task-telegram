@@ -26,7 +26,7 @@ This document outlines the strategic direction, key milestones, and planned feat
 - **Description**: Admin assign tasks to group members with reminders, deadlines, and completion workflow.
 - **Phases**:
     - Phase 01 (Foundation): Completed on 2025-12-25
-    - Phase 02 (Services): Pending
+    - Phase 02 (Services): Completed on 2025-12-25
     - Phase 03 (Scheduler): Pending
     - Phase 04 (Bot UI): Pending
     - Phase 05 (Handlers): Pending
