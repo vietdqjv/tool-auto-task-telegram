@@ -43,6 +43,27 @@ class Settings(BaseSettings):
     RATE_LIMIT_REQUESTS: int = Field(default=5, description="Max requests per period")
     RATE_LIMIT_PERIOD: int = Field(default=60, description="Rate limit period in seconds")
 
+    # Working Hours (VN timezone with lunch break)
+    TIMEZONE: str = Field(default="Asia/Ho_Chi_Minh", description="Timezone for working hours")
+    WORKING_PERIODS: list[tuple[int, int, int, int]] = Field(
+        default=[(8, 30, 12, 0), (13, 30, 17, 30)],
+        description="Working periods as (start_h, start_m, end_h, end_m)"
+    )
+    WORKING_DAYS: list[int] = Field(
+        default=[0, 1, 2, 3, 4],
+        description="Working days (0=Mon, 6=Sun)"
+    )
+    MIN_REMINDER_INTERVAL: int = Field(
+        default=15,
+        description="Minimum reminder interval in minutes"
+    )
+
+    # Task cleanup
+    COMPLETED_TASK_RETENTION_DAYS: int = Field(
+        default=30,
+        description="Days to keep completed tasks before cleanup"
+    )
+
     @property
     def jobstore_url(self) -> str:
         """Return job store URL, fallback to DATABASE_URL."""

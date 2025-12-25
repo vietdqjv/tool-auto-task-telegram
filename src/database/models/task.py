@@ -15,8 +15,10 @@ class TaskStatus(str, Enum):
     """Task status enumeration."""
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
+    SUBMITTED = "submitted"  # Waiting for admin verification
     COMPLETED = "completed"
     CANCELLED = "cancelled"
+    OVERDUE = "overdue"  # Past deadline
 
 
 class TaskPriority(str, Enum):
@@ -49,6 +51,33 @@ class Task(Base):
     reminder_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+    # Group task fields
+    group_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    assignee_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("users.id"), nullable=True
+    )
+    assigned_by_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("users.id"), nullable=True
+    )
+
+    # Recurring reminder
+    reminder_interval_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    last_reminder_sent: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    # Completion workflow
+    submitted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    verified_by_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("users.id"), nullable=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

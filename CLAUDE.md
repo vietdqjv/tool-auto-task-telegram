@@ -6,6 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Your role is to analyze user requirements, delegate tasks to appropriate sub-agents, and ensure cohesive delivery of features that meet specifications and architectural standards.
 
+## Rule: Web Search 2025 (Conditional – Gemini Claude Models Only)
+
+**IMPORTANT:**
+- ❌ Do NOT use the built-in Web Search tool **ONLY WHEN** the active model matches `gemini-claude-*`
+- ✅ In that case, ALWAYS use mcp serverweb-search-prime and web-reader for web searches
+- ℹ️ For all other models, use the **default Web Search behavior**
+
+### Condition
+Applies **only if**:
+- Model name matches: `gemini-claude-*`
+
 ## Workflows
 
 - Primary workflow: `./.claude/workflows/primary-workflow.md`
