@@ -249,20 +249,62 @@ async def show_confirmation(message: Message, state: FSMContext):
 
 
 @group_task_fsm_router.callback_query(CreateGroupTask.confirm, F.data == "confirm_task")
-async def confirm_create_task(callback: CallbackQuery, state: FSMContext):
-    """Create the task after confirmation.
+async def confirm_create_task(
+    callback: CallbackQuery,
+    state: FSMContext,
+    session,  # Injected by middleware (AsyncSession)
+):
+    """Create the task after confirmation using GroupTaskService."""
+    gts = importlib.import_module("src.services.group-task-service")
+    GroupTaskService = gts.GroupTaskService
 
-    Note: Full implementation in Phase 5 - uses GroupTaskService.
-    """
     data = await state.get_data()
-    await callback.message.edit_text(
-        f"✅ Task đã được tạo!\n\n"
-        f"📋 {data['title']}\n"
-        f"👤 Giao cho: {data.get('assignee_name') or data.get('assignee_mention')}\n\n"
-        f"ID task sẽ hiển thị sau khi tích hợp service."
-    )
+    service = GroupTaskService(session)
+
+    # Parse due_date from ISO format
+    due_date = None
+    if data.get("due_date"):
+        due_date = datetime.fromisoformat(data["due_date"])
+
+    # Get assignee_id (may need resolution for @mention)
+    assignee_id = data.get("assignee_id")
+    if not assignee_id:
+        # For @username mention, we can't resolve without API call
+        # Use the admin's ID as placeholder and notify them
+        await callback.message.edit_text(
+            "⚠️ Không thể xác định user từ @username.\n"
+            "Vui lòng tag user trực tiếp (không phải @username)."
+        )
+        await state.clear()
+        await callback.answer()
+        return
+
+    try:
+        task = await service.create_group_task(
+            group_id=data["group_id"],
+            title=data["title"],
+            assignee_id=assignee_id,
+            assigned_by_id=data["admin_id"],
+            description=data.get("description"),
+            due_date=due_date,
+            reminder_interval_minutes=data.get("reminder_interval"),
+        )
+        await session.commit()
+
+        await callback.message.edit_text(
+            f"✅ Task đã được tạo!\n\n"
+            f"🆔 ID: {task.id}\n"
+            f"📋 {task.title}\n"
+            f'👤 Giao cho: <a href="tg://user?id={task.assignee_id}">Assignee</a>',
+            parse_mode="HTML",
+        )
+        await callback.answer("Task đã tạo!")
+    except Exception as e:
+        await session.rollback()
+        await callback.message.edit_text(f"❌ Lỗi: {e}")
+        await callback.answer()
+
     await state.clear()
-    await callback.answer("Task đã tạo!")
 
 
 @group_task_fsm_router.callback_query(CreateGroupTask.confirm, F.data == "cancel_task")
