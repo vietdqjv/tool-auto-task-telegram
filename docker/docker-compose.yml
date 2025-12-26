@@ -21,6 +21,8 @@ services:
 
   db:
     image: postgres:16-alpine
+    env_file:
+      - ../.env
     environment:
       POSTGRES_DB: telegram_bot
       POSTGRES_USER: bot
