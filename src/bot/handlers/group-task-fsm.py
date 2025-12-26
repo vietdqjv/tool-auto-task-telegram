@@ -3,17 +3,18 @@
 import importlib
 from datetime import datetime
 
-from aiogram import Router, F
+from aiogram import Router, F, Bot
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from zoneinfo import ZoneInfo
 
 from src.core.config import settings
 
-# Import keyboards using importlib for kebab-case
+# Import modules using importlib for kebab-case
 keyboards = importlib.import_module("src.bot.keyboards.group-task-keyboards")
+deep_link_helper = importlib.import_module("src.bot.utils.deep-link-helper")
 
 TIMEZONE = ZoneInfo(settings.TIMEZONE)
 
@@ -322,8 +323,51 @@ async def cmd_cancel(message: Message, state: FSMContext):
     """Cancel any ongoing FSM flow."""
     current_state = await state.get_state()
     if current_state is None:
-        await message.answer("Không có gì để hủy.")
+        await message.answer("Khong co gi de huy.")
         return
 
     await state.clear()
-    await message.answer("❌ Đã hủy thao tác.")
+    await message.answer("Da huy thao tac.")
+
+
+# ============ DM Redirect Handlers ============
+
+async def _redirect_to_dm(message: Message, bot: Bot, command: str, task_id: int | None = None):
+    """Generic redirect handler for FSM commands -> DM."""
+    link = await deep_link_helper.create_fsm_link(bot, command, message.chat.id, task_id)
+
+    action_text = {"newtask": "Tao Task", "edittask": "Sua Task", "bulktask": "Tao Hang Loat"}
+    await message.reply(
+        f"{message.from_user.mention_html()}\n"
+        f"Nhan nut ben duoi de {action_text[command].lower()} trong DM:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text=f"{action_text[command]}", url=link)
+        ]]),
+        parse_mode="HTML"
+    )
+
+
+@group_task_fsm_router.message(Command("newtask"), F.chat.type.in_({"group", "supergroup"}))
+async def cmd_newtask_redirect(message: Message, bot: Bot):
+    """Redirect /newtask to DM via deep link."""
+    await _redirect_to_dm(message, bot, "newtask")
+
+
+@group_task_fsm_router.message(Command("edittask"), F.chat.type.in_({"group", "supergroup"}))
+async def cmd_edittask_redirect(message: Message, bot: Bot):
+    """Redirect /edittask to DM via deep link."""
+    # Parse task_id from command args: /edittask 123
+    task_id = None
+    parts = message.text.split()
+    if len(parts) > 1:
+        try:
+            task_id = int(parts[1])
+        except ValueError:
+            pass
+    await _redirect_to_dm(message, bot, "edittask", task_id)
+
+
+@group_task_fsm_router.message(Command("bulktask"), F.chat.type.in_({"group", "supergroup"}))
+async def cmd_bulktask_redirect(message: Message, bot: Bot):
+    """Redirect /bulktask to DM via deep link."""
+    await _redirect_to_dm(message, bot, "bulktask")

@@ -19,14 +19,18 @@ def create_bot() -> Bot:
 
 def create_dispatcher() -> Dispatcher:
     """Create dispatcher with routers and middlewares."""
-    from src.bot.handlers import commands_router, tasks_router, callbacks_router, group_tasks_router
-    from src.bot.middlewares import AuthMiddleware, RateLimitMiddleware
+    from src.bot.handlers import (
+        commands_router, tasks_router, callbacks_router,
+        group_tasks_router, group_task_fsm_router, dm_task_fsm_router
+    )
+    from src.bot.middlewares import AuthMiddleware, RateLimitMiddleware, GroupRateLimitMiddleware
 
     # Use RedisStorage for FSM state persistence
     storage = RedisStorage.from_url(settings.REDIS_URL)
     dp = Dispatcher(storage=storage)
 
     # Register middlewares (outer = runs first)
+    dp.message.outer_middleware(GroupRateLimitMiddleware(max_per_minute=30))
     dp.message.outer_middleware(RateLimitMiddleware())
     dp.message.middleware(AuthMiddleware())
     dp.callback_query.middleware(AuthMiddleware())
@@ -35,6 +39,8 @@ def create_dispatcher() -> Dispatcher:
     dp.include_router(commands_router)
     dp.include_router(tasks_router)
     dp.include_router(group_tasks_router)
+    dp.include_router(group_task_fsm_router)
+    dp.include_router(dm_task_fsm_router)
     dp.include_router(callbacks_router)
 
     return dp
