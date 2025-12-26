@@ -4,7 +4,7 @@ APScheduler>=3.10
 SQLAlchemy[asyncio]>=2.0
 asyncpg
 aiosqlite
-aioredis
+redis>=5.0
 httpx
 pydantic-settings>=2.0
 alembic
