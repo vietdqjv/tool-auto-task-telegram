@@ -54,13 +54,14 @@ async def process_title(message: Message, state: FSMContext):
 
 @tasks_router.message(AddTaskStates.due_date)
 async def process_due_date(message: Message, state: FSMContext):
-    due_date = None
+    due_date_str = None
     if message.text.lower() != "skip":
         try:
-            due_date = datetime.strptime(message.text, "%Y-%m-%d")
+            datetime.strptime(message.text, "%Y-%m-%d")  # Validate format
+            due_date_str = message.text  # Store as string for JSON serialization
         except ValueError:
             return await message.answer("Invalid format. Use YYYY-MM-DD or 'skip'.")
-    await state.update_data(due_date=due_date)
+    await state.update_data(due_date=due_date_str)
     await state.set_state(AddTaskStates.reminder)
     await message.answer("*Step 3/3: Reminder*\n\nEnter reminder (YYYY-MM-DD HH:MM) or 'skip':")
 
@@ -75,12 +76,14 @@ async def process_reminder(message: Message, state: FSMContext):
         except ValueError:
             return await message.answer("Invalid format. Use YYYY-MM-DD HH:MM or 'skip'.")
     await state.clear()
+    # Convert due_date string back to datetime
+    due_date = datetime.strptime(data["due_date"], "%Y-%m-%d") if data.get("due_date") else None
     async with async_session_factory() as session:
         service = TaskService(session)
         try:
             task = await service.create_task(
                 user_id=message.from_user.id, title=data["title"],
-                due_date=data.get("due_date"), reminder_at=reminder_at)
+                due_date=due_date, reminder_at=reminder_at)
             await session.commit()
             if reminder_at:
                 get_scheduler().add_reminder(f"remind_{task.id}", reminder_at, message.from_user.id, task.id)
