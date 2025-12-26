@@ -26,6 +26,76 @@ group_tasks_router = Router(name="group_tasks")
 
 # ============ View Commands ============
 
+@group_tasks_router.message(Command("assign"))
+async def cmd_assign(message: Message, session: AsyncSession):
+    """Assign a new task to a user (admin only).
+
+    Usage: /assign @user Task title
+    """
+    if message.chat.type not in ["group", "supergroup"]:
+        await message.answer("Lệnh này chỉ hoạt động trong nhóm.")
+        return
+
+    # Check admin
+    member = await message.chat.get_member(message.from_user.id)
+    if member.status not in ["creator", "administrator"]:
+        await message.answer("Chỉ admin mới có thể giao task.")
+        return
+
+    # Parse command: /assign @user Task title
+    args = message.text.split(maxsplit=2)
+    if len(args) < 3:
+        await message.answer("Sử dụng: /assign @user Tiêu đề task")
+        return
+
+    # Get assignee from mention
+    assignee_id = None
+    assignee_name = "User"
+    for entity in message.entities or []:
+        if entity.type == "text_mention" and entity.user:
+            assignee_id = entity.user.id
+            assignee_name = entity.user.full_name
+            break
+        elif entity.type == "mention":
+            # @username mention - can't get user_id directly
+            await message.answer(
+                "Vui lòng mention trực tiếp user (không dùng @username).\n"
+                "Ví dụ: Gõ @ rồi chọn user từ danh sách."
+            )
+            return
+
+    if not assignee_id:
+        await message.answer("Vui lòng mention người nhận task.\nVí dụ: /assign @user Tiêu đề task")
+        return
+
+    # Extract title (everything after @mention)
+    title = args[2].strip()
+    if not title:
+        await message.answer("Vui lòng nhập tiêu đề task.")
+        return
+
+    service = GroupTaskService(session)
+    try:
+        task = await service.create_group_task(
+            group_id=message.chat.id,
+            title=title,
+            assignee_id=assignee_id,
+            assigned_by_id=message.from_user.id,
+        )
+        await session.commit()
+        await message.answer(
+            f"✅ Task đã tạo!\n\n"
+            f"📋 <b>ID:</b> {task.id}\n"
+            f"📝 <b>Tiêu đề:</b> {task.title}\n"
+            f'👤 <b>Giao cho:</b> <a href="tg://user?id={assignee_id}">{assignee_name}</a>\n\n'
+            f"Người nhận có thể hoàn thành với /done {task.id}",
+            parse_mode="HTML",
+        )
+    except Exception as e:
+        await session.rollback()
+        await message.answer(f"Lỗi: {e}")
+
+
 @group_tasks_router.message(Command("mytasks"))
 async def cmd_my_tasks(message: Message, session: AsyncSession):
     """View tasks assigned to me."""
