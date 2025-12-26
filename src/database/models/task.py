@@ -86,7 +86,9 @@ class Task(Base):
     )
 
     # Relationships
-    user: Mapped["User"] = relationship("User", back_populates="tasks")
+    user: Mapped["User"] = relationship(
+        "User", back_populates="tasks", foreign_keys=[user_id]
+    )
 
     def __repr__(self) -> str:
         return f"<Task id={self.id} title={self.title[:20]}>"
