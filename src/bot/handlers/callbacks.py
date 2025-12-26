@@ -7,7 +7,7 @@ from aiogram.fsm.context import FSMContext
 from src.core.constants import MSG_CONFIRM_DELETE, MSG_HELP
 from src.database import async_session_factory, TaskRepository, TaskStatus
 from src.bot.keyboards.inline import TaskCallback, get_confirm_delete_keyboard, get_task_list_keyboard
-from src.fsm.task_fsm import AddTaskFSM
+from src.bot.handlers.tasks import AddTaskStates
 import importlib
 
 callbacks_router = Router(name="callbacks")
@@ -40,7 +40,7 @@ async def callback_menu_tasks(callback: CallbackQuery):
 @callbacks_router.callback_query(F.data == "menu_add")
 async def callback_menu_add(callback: CallbackQuery, state: FSMContext):
     """Handle Add Task button - start FSM."""
-    await state.set_state(AddTaskFSM.waiting_for_title)
+    await state.set_state(AddTaskStates.title)
     await callback.message.edit_text("*Create New Task*\n\nPlease enter the task title:")
     await callback.answer()
 
