@@ -5,7 +5,7 @@ This document outlines the strategic direction, key milestones, and planned feat
 
 ## Current Status
 - **Overall Project Status**: In Progress
-- **Last Updated**: 2025-12-25
+- **Last Updated**: 2025-12-26
 
 ## Major Releases & Milestones
 
@@ -31,10 +31,18 @@ This document outlines the strategic direction, key milestones, and planned feat
     - Phase 04 (Bot UI): Completed on 2025-12-25
     - Phase 05 (Handlers): Completed on 2025-12-25
 
+### Group Chaos Hybrid Solution
+- **Status**: In Progress
+- **Description**: Fix bot confusion in groups via reply patterns, DM deep-linking FSM, and rate limiting.
+- **Phases**:
+    - Phase 1 - Reply Pattern Refactor: Completed on 2025-12-26
+
 ## Changelog
+- **2025-12-26**: Phase 1 of Group Chaos Hybrid Solution completed: Reply Pattern Refactor.
 - **2025-12-25**: Group Task Management feature completed and deployed.
     - Added database foundation and configuration for group tasks.
     - Implemented `working-hours.py` and `group-task-service.py`.
     - Developed `group-task-reminder.py` for recurring reminders, overdue detection, and cleanup.
     - Designed `group-task-keyboards.py` and `group-task-fsm.py` for bot UI.
+    - Added Rate Limiting Bypass for admin users and `/assign` command for group task creation.
     - Integrated `group-tasks.py` handlers for all group task commands.

@@ -20,7 +20,7 @@ Mục tiêu chính của dự án là cung cấp một công cụ tự động h
 -   **Nhắc nhở**: Nhận thông báo nhắc nhở theo lịch trình đã đặt.
 
 ### 3.2. Quản lý tác vụ nhóm (Mới triển khai - Cập nhật ngày 25/12/2025)
--   **Giao tác vụ**: Admin hoặc người có quyền có thể giao tác vụ cho các thành viên trong nhóm.
+-   **Giao tác vụ**: Admin có thể giao tác vụ cho các thành viên trong nhóm thông qua lệnh \`/assign\` hoặc người có quyền có thể giao tác vụ cho các thành viên trong nhóm.
 -   **Theo dõi trạng thái**: Theo dõi trạng thái của các tác vụ nhóm (đã giao, đang thực hiện, đã nộp, cần xác minh, bị từ chối, đã hoàn thành).
 -   **Nhắc nhở tác vụ nhóm**: Gửi nhắc nhở định kỳ cho các thành viên về tác vụ nhóm.
 -   **Phê duyệt/Từ chối**: Admin có thể xác minh và phê duyệt hoặc từ chối tác vụ đã nộp.
@@ -39,7 +39,7 @@ Mục tiêu chính của dự án là cung cấp một công cụ tự động h
 
 ### 5.1. Yêu cầu chức năng (Functional Requirements)
 -   **FR1**: Bot phải cho phép người dùng tạo, xem, chỉnh sửa, hoàn thành và xóa tác vụ cá nhân.
--   **FR2**: Bot phải hỗ trợ các lệnh để quản lý tác vụ nhóm, bao gồm giao, theo dõi, xác minh, từ chối và tái phân công.
+-   **FR2**: Bot phải hỗ trợ các lệnh để quản lý tác vụ nhóm, bao gồm giao (đặc biệt là lệnh \`/assign\` cho admin), theo dõi, xác minh, từ chối và tái phân công.
 -   **FR3**: Bot phải gửi nhắc nhở định kỳ cho cả tác vụ cá nhân và tác vụ nhóm trong giờ làm việc được định cấu hình.
 -   **FR4**: Hệ thống phải tự động phát hiện và đánh dấu các tác vụ quá hạn.
 -   **FR5**: Bot phải hỗ trợ quy trình tạo tác vụ nhiều bước thông qua FSM (Finite State Machine).
@@ -63,9 +63,13 @@ Mục tiêu chính của dự án là cung cấp một công cụ tự động h
 
 ## 6. Lịch sử thay đổi
 
+-   **2025-12-26**: Hoàn thành tái cấu trúc mẫu phản hồi cho bot.
+    -   Tất cả các phản hồi trong nhóm chat hiện sử dụng `message.reply()` + `mention_html()`.
+    -   Các phản hồi trong chat riêng/DM vẫn giữ `message.answer()`.
+    -   Thêm `parse_mode='HTML'` để định dạng tin nhắn đúng cách.
 -   **2025-12-25**: Hoàn thành triển khai tính năng Quản lý tác vụ nhóm (Group Task Management).
     -   Giai đoạn 1: Nền tảng cơ sở dữ liệu và cấu hình (`TaskStatus.SUBMITTED`, `OVERDUE`, các trường tác vụ nhóm).
     -   Giai đoạn 2: Các dịch vụ (`working-hours.py`, `group-task-service.py`).
     -   Giai đoạn 3: Scheduler (`group-task-reminder.py` - nhắc nhở định kỳ, phát hiện quá hạn, dọn dẹp).
     -   Giai đoạn 4: Giao diện Bot (`group-task-keyboards.py`, `group-task-fsm.py`).
-    -   Giai đoạn 5: Handlers (`group-tasks.py` với các lệnh `/mytasks`, `/tasks`, `/done`, `/verify`, `/reject`, `/rep`, `/reassign`).
+    -   Giai đoạn 5: Handlers (`group-tasks.py` với các lệnh `/mytasks`, `/tasks`, `/done`, `/verify`, `/reject`, `/reassign`, `/assign`).

@@ -39,13 +39,19 @@ async def cmd_assign(message: Message, session: AsyncSession):
     # Check admin
     member = await message.chat.get_member(message.from_user.id)
     if member.status not in ["creator", "administrator"]:
-        await message.answer("Chỉ admin mới có thể giao task.")
+        await message.reply(
+            f"{message.from_user.mention_html()} Chỉ admin mới có thể giao task.",
+            parse_mode="HTML"
+        )
         return
 
     # Parse command: /assign @user Task title
     args = message.text.split(maxsplit=2)
     if len(args) < 3:
-        await message.answer("Sử dụng: /assign @user Tiêu đề task")
+        await message.reply(
+            f"{message.from_user.mention_html()} Sử dụng: /assign @user Tiêu đề task",
+            parse_mode="HTML"
+        )
         return
 
     # Get assignee from mention
@@ -58,20 +64,27 @@ async def cmd_assign(message: Message, session: AsyncSession):
             break
         elif entity.type == "mention":
             # @username mention - can't get user_id directly
-            await message.answer(
-                "Vui lòng mention trực tiếp user (không dùng @username).\n"
-                "Ví dụ: Gõ @ rồi chọn user từ danh sách."
+            await message.reply(
+                f"{message.from_user.mention_html()} Vui lòng mention trực tiếp user (không dùng @username).\n"
+                "Ví dụ: Gõ @ rồi chọn user từ danh sách.",
+                parse_mode="HTML"
             )
             return
 
     if not assignee_id:
-        await message.answer("Vui lòng mention người nhận task.\nVí dụ: /assign @user Tiêu đề task")
+        await message.reply(
+            f"{message.from_user.mention_html()} Vui lòng mention người nhận task.\nVí dụ: /assign @user Tiêu đề task",
+            parse_mode="HTML"
+        )
         return
 
     # Extract title (everything after @mention)
     title = args[2].strip()
     if not title:
-        await message.answer("Vui lòng nhập tiêu đề task.")
+        await message.reply(
+            f"{message.from_user.mention_html()} Vui lòng nhập tiêu đề task.",
+            parse_mode="HTML"
+        )
         return
 
     service = GroupTaskService(session)
@@ -83,8 +96,8 @@ async def cmd_assign(message: Message, session: AsyncSession):
             assigned_by_id=message.from_user.id,
         )
         await session.commit()
-        await message.answer(
-            f"✅ Task đã tạo!\n\n"
+        await message.reply(
+            f"{message.from_user.mention_html()} ✅ Task đã tạo!\n\n"
             f"📋 <b>ID:</b> {task.id}\n"
             f"📝 <b>Tiêu đề:</b> {task.title}\n"
             f'👤 <b>Giao cho:</b> <a href="tg://user?id={assignee_id}">{assignee_name}</a>\n\n'
@@ -93,7 +106,7 @@ async def cmd_assign(message: Message, session: AsyncSession):
         )
     except Exception as e:
         await session.rollback()
-        await message.answer(f"Lỗi: {e}")
+        await message.reply(f"{message.from_user.mention_html()} ❌ Lỗi: {e}", parse_mode="HTML")
 
 
 @group_tasks_router.message(Command("mytasks"))
@@ -102,15 +115,29 @@ async def cmd_my_tasks(message: Message, session: AsyncSession):
     service = GroupTaskService(session)
     group_id = message.chat.id if message.chat.type in ["group", "supergroup"] else None
     tasks = await service.get_user_tasks(message.from_user.id, group_id)
+    is_group = message.chat.type in ["group", "supergroup"]
 
     if not tasks:
-        await message.answer("Bạn không có task nào.")
+        if is_group:
+            await message.reply(
+                f"{message.from_user.mention_html()} Bạn không có task nào.",
+                parse_mode="HTML"
+            )
+        else:
+            await message.answer("Bạn không có task nào.")
         return
 
-    await message.answer(
-        f"📋 Task của bạn ({len(tasks)}):",
-        reply_markup=keyboards.get_task_list_keyboard(tasks),
-    )
+    if is_group:
+        await message.reply(
+            f"{message.from_user.mention_html()} 📋 Task của bạn ({len(tasks)}):",
+            reply_markup=keyboards.get_task_list_keyboard(tasks),
+            parse_mode="HTML"
+        )
+    else:
+        await message.answer(
+            f"📋 Task của bạn ({len(tasks)}):",
+            reply_markup=keyboards.get_task_list_keyboard(tasks),
+        )
 
 
 @group_tasks_router.message(Command("tasks"))
@@ -123,19 +150,26 @@ async def cmd_all_tasks(message: Message, session: AsyncSession):
     # Check admin
     member = await message.chat.get_member(message.from_user.id)
     if member.status not in ["creator", "administrator"]:
-        await message.answer("Chỉ admin mới có thể xem tất cả task.")
+        await message.reply(
+            f"{message.from_user.mention_html()} Chỉ admin mới có thể xem tất cả task.",
+            parse_mode="HTML"
+        )
         return
 
     service = GroupTaskService(session)
     tasks = await service.get_group_tasks(message.chat.id)
 
     if not tasks:
-        await message.answer("Không có task nào trong nhóm này.")
+        await message.reply(
+            f"{message.from_user.mention_html()} Không có task nào trong nhóm này.",
+            parse_mode="HTML"
+        )
         return
 
-    await message.answer(
-        f"📋 Task nhóm ({len(tasks)}):",
+    await message.reply(
+        f"{message.from_user.mention_html()} 📋 Task nhóm ({len(tasks)}):",
         reply_markup=keyboards.get_task_list_keyboard(tasks),
+        parse_mode="HTML"
     )
 
 
@@ -145,14 +179,28 @@ async def cmd_all_tasks(message: Message, session: AsyncSession):
 async def cmd_done(message: Message, session: AsyncSession):
     """Submit task for verification (assignee only)."""
     args = message.text.split()
+    is_group = message.chat.type in ["group", "supergroup"]
+
     if len(args) < 2:
-        await message.answer("Sử dụng: /done <task_id>")
+        if is_group:
+            await message.reply(
+                f"{message.from_user.mention_html()} Sử dụng: /done <task_id>",
+                parse_mode="HTML"
+            )
+        else:
+            await message.answer("Sử dụng: /done <task_id>")
         return
 
     try:
         task_id = int(args[1])
     except ValueError:
-        await message.answer("Task ID không hợp lệ.")
+        if is_group:
+            await message.reply(
+                f"{message.from_user.mention_html()} Task ID không hợp lệ.",
+                parse_mode="HTML"
+            )
+        else:
+            await message.answer("Task ID không hợp lệ.")
         return
 
     service = GroupTaskService(session)
@@ -160,12 +208,20 @@ async def cmd_done(message: Message, session: AsyncSession):
         task = await service.submit_task(task_id, message.from_user.id)
         await session.commit()
 
-        # Notify admin
-        await message.answer(
-            f"✅ Task đã gửi để xác nhận!\n\n"
-            f"📋 {task.title}\n"
-            f"Đang chờ admin xác nhận.",
-        )
+        # Notify user
+        if is_group:
+            await message.reply(
+                f"{message.from_user.mention_html()} ✅ Task đã gửi để xác nhận!\n\n"
+                f"📋 {task.title}\n"
+                f"Đang chờ admin xác nhận.",
+                parse_mode="HTML"
+            )
+        else:
+            await message.answer(
+                f"✅ Task đã gửi để xác nhận!\n\n"
+                f"📋 {task.title}\n"
+                f"Đang chờ admin xác nhận.",
+            )
 
         # Send notification to group with verify buttons
         if task.group_id:
@@ -180,7 +236,10 @@ async def cmd_done(message: Message, session: AsyncSession):
             )
     except Exception as e:
         await session.rollback()
-        await message.answer(f"Lỗi: {e}")
+        if is_group:
+            await message.reply(f"{message.from_user.mention_html()} ❌ Lỗi: {e}", parse_mode="HTML")
+        else:
+            await message.answer(f"Lỗi: {e}")
 
 
 @group_tasks_router.message(Command("verify"))
@@ -188,13 +247,19 @@ async def cmd_verify(message: Message, session: AsyncSession):
     """Verify completed task (admin only)."""
     args = message.text.split()
     if len(args) < 2:
-        await message.answer("Sử dụng: /verify <task_id>")
+        await message.reply(
+            f"{message.from_user.mention_html()} Sử dụng: /verify <task_id>",
+            parse_mode="HTML"
+        )
         return
 
     try:
         task_id = int(args[1])
     except ValueError:
-        await message.answer("Task ID không hợp lệ.")
+        await message.reply(
+            f"{message.from_user.mention_html()} Task ID không hợp lệ.",
+            parse_mode="HTML"
+        )
         return
 
     # Check admin - must be in group
@@ -204,22 +269,25 @@ async def cmd_verify(message: Message, session: AsyncSession):
 
     member = await message.chat.get_member(message.from_user.id)
     if member.status not in ["creator", "administrator"]:
-        await message.answer("Chỉ admin mới có thể xác nhận task.")
+        await message.reply(
+            f"{message.from_user.mention_html()} Chỉ admin mới có thể xác nhận task.",
+            parse_mode="HTML"
+        )
         return
 
     service = GroupTaskService(session)
     try:
         task = await service.verify_task(task_id, message.from_user.id)
         await session.commit()
-        await message.answer(
-            f"✅ Task đã xác nhận!\n\n"
+        await message.reply(
+            f"{message.from_user.mention_html()} ✅ Task đã xác nhận!\n\n"
             f"📋 {task.title}\n"
             f'👤 Hoàn thành bởi: <a href="tg://user?id={task.assignee_id}">Assignee</a>',
             parse_mode="HTML",
         )
     except Exception as e:
         await session.rollback()
-        await message.answer(f"Lỗi: {e}")
+        await message.reply(f"{message.from_user.mention_html()} ❌ Lỗi: {e}", parse_mode="HTML")
 
 
 @group_tasks_router.message(Command("reject"))
@@ -227,13 +295,19 @@ async def cmd_reject(message: Message, session: AsyncSession):
     """Reject task submission (admin only)."""
     args = message.text.split()
     if len(args) < 2:
-        await message.answer("Sử dụng: /reject <task_id> [lý do]")
+        await message.reply(
+            f"{message.from_user.mention_html()} Sử dụng: /reject <task_id> [lý do]",
+            parse_mode="HTML"
+        )
         return
 
     try:
         task_id = int(args[1])
     except ValueError:
-        await message.answer("Task ID không hợp lệ.")
+        await message.reply(
+            f"{message.from_user.mention_html()} Task ID không hợp lệ.",
+            parse_mode="HTML"
+        )
         return
 
     reason = " ".join(args[2:]) if len(args) > 2 else None
@@ -245,7 +319,10 @@ async def cmd_reject(message: Message, session: AsyncSession):
 
     member = await message.chat.get_member(message.from_user.id)
     if member.status not in ["creator", "administrator"]:
-        await message.answer("Chỉ admin mới có thể từ chối task.")
+        await message.reply(
+            f"{message.from_user.mention_html()} Chỉ admin mới có thể từ chối task.",
+            parse_mode="HTML"
+        )
         return
 
     service = GroupTaskService(session)
@@ -253,20 +330,18 @@ async def cmd_reject(message: Message, session: AsyncSession):
         task = await service.reject_task(task_id, message.from_user.id)
         await session.commit()
 
-        # Notify assignee
-        if task.group_id:
-            await message.bot.send_message(
-                task.group_id,
-                f"❌ Task bị từ chối\n\n"
-                f"📋 {task.title}\n"
-                f'👤 <a href="tg://user?id={task.assignee_id}">Assignee</a>\n'
-                f"📝 Lý do: {reason or 'Không nêu'}\n\n"
-                f"Vui lòng cập nhật và gửi lại với /done {task_id}",
-                parse_mode="HTML",
-            )
+        # Notify assignee in group
+        await message.reply(
+            f"{message.from_user.mention_html()} ❌ Task bị từ chối\n\n"
+            f"📋 {task.title}\n"
+            f'👤 <a href="tg://user?id={task.assignee_id}">Assignee</a>\n'
+            f"📝 Lý do: {reason or 'Không nêu'}\n\n"
+            f"Vui lòng cập nhật và gửi lại với /done {task_id}",
+            parse_mode="HTML",
+        )
     except Exception as e:
         await session.rollback()
-        await message.answer(f"Lỗi: {e}")
+        await message.reply(f"{message.from_user.mention_html()} ❌ Lỗi: {e}", parse_mode="HTML")
 
 
 # ============ Reminder ============
@@ -275,25 +350,47 @@ async def cmd_reject(message: Message, session: AsyncSession):
 async def cmd_set_reminder(message: Message, session: AsyncSession):
     """Set reminder interval for a task."""
     args = message.text.split()
+    is_group = message.chat.type in ["group", "supergroup"]
+
     if len(args) < 3:
-        await message.answer(
-            "Sử dụng: /rep <task_id> <interval>\n"
-            "Ví dụ: /rep 123 2h, /rep 123 30m, /rep 123 1h30m"
-        )
+        if is_group:
+            await message.reply(
+                f"{message.from_user.mention_html()} Sử dụng: /rep <task_id> <interval>\n"
+                "Ví dụ: /rep 123 2h, /rep 123 30m, /rep 123 1h30m",
+                parse_mode="HTML"
+            )
+        else:
+            await message.answer(
+                "Sử dụng: /rep <task_id> <interval>\n"
+                "Ví dụ: /rep 123 2h, /rep 123 30m, /rep 123 1h30m"
+            )
         return
 
     try:
         task_id = int(args[1])
     except ValueError:
-        await message.answer("Task ID không hợp lệ.")
+        if is_group:
+            await message.reply(
+                f"{message.from_user.mention_html()} Task ID không hợp lệ.",
+                parse_mode="HTML"
+            )
+        else:
+            await message.answer("Task ID không hợp lệ.")
         return
 
     interval = wh.parse_reminder_interval(args[2])
     if not interval:
-        await message.answer(
-            f"Định dạng không hợp lệ hoặc dưới {settings.MIN_REMINDER_INTERVAL} phút.\n"
-            "Dùng: 2h, 30m, 1h30m"
-        )
+        if is_group:
+            await message.reply(
+                f"{message.from_user.mention_html()} Định dạng không hợp lệ hoặc dưới {settings.MIN_REMINDER_INTERVAL} phút.\n"
+                "Dùng: 2h, 30m, 1h30m",
+                parse_mode="HTML"
+            )
+        else:
+            await message.answer(
+                f"Định dạng không hợp lệ hoặc dưới {settings.MIN_REMINDER_INTERVAL} phút.\n"
+                "Dùng: 2h, 30m, 1h30m"
+            )
         return
 
     service = GroupTaskService(session)
@@ -307,10 +404,19 @@ async def cmd_set_reminder(message: Message, session: AsyncSession):
             interval_text = f"{hours}h"
         else:
             interval_text = f"{mins}m"
-        await message.answer(f"⏰ Nhắc nhở đã đặt mỗi {interval_text}")
+        if is_group:
+            await message.reply(
+                f"{message.from_user.mention_html()} ⏰ Nhắc nhở đã đặt mỗi {interval_text}",
+                parse_mode="HTML"
+            )
+        else:
+            await message.answer(f"⏰ Nhắc nhở đã đặt mỗi {interval_text}")
     except Exception as e:
         await session.rollback()
-        await message.answer(f"Lỗi: {e}")
+        if is_group:
+            await message.reply(f"{message.from_user.mention_html()} ❌ Lỗi: {e}", parse_mode="HTML")
+        else:
+            await message.answer(f"Lỗi: {e}")
 
 
 # ============ Reassign ============
@@ -320,13 +426,19 @@ async def cmd_reassign(message: Message, session: AsyncSession):
     """Reassign task to different user (admin only)."""
     args = message.text.split()
     if len(args) < 3:
-        await message.answer("Sử dụng: /reassign <task_id> @new_user")
+        await message.reply(
+            f"{message.from_user.mention_html()} Sử dụng: /reassign <task_id> @new_user",
+            parse_mode="HTML"
+        )
         return
 
     try:
         task_id = int(args[1])
     except ValueError:
-        await message.answer("Task ID không hợp lệ.")
+        await message.reply(
+            f"{message.from_user.mention_html()} Task ID không hợp lệ.",
+            parse_mode="HTML"
+        )
         return
 
     # Check admin - must be in group
@@ -336,7 +448,10 @@ async def cmd_reassign(message: Message, session: AsyncSession):
 
     member = await message.chat.get_member(message.from_user.id)
     if member.status not in ["creator", "administrator"]:
-        await message.answer("Chỉ admin mới có thể chuyển giao task.")
+        await message.reply(
+            f"{message.from_user.mention_html()} Chỉ admin mới có thể chuyển giao task.",
+            parse_mode="HTML"
+        )
         return
 
     # Get new assignee from mention
@@ -347,22 +462,25 @@ async def cmd_reassign(message: Message, session: AsyncSession):
             break
 
     if not new_assignee_id:
-        await message.answer("Vui lòng mention người nhận mới với @username")
+        await message.reply(
+            f"{message.from_user.mention_html()} Vui lòng mention người nhận mới với @username",
+            parse_mode="HTML"
+        )
         return
 
     service = GroupTaskService(session)
     try:
         task = await service.reassign_task(task_id, new_assignee_id, message.from_user.id)
         await session.commit()
-        await message.answer(
-            f"🔄 Task đã chuyển giao!\n\n"
+        await message.reply(
+            f"{message.from_user.mention_html()} 🔄 Task đã chuyển giao!\n\n"
             f"📋 {task.title}\n"
             f'👤 Người nhận mới: <a href="tg://user?id={new_assignee_id}">Assignee</a>',
             parse_mode="HTML",
         )
     except Exception as e:
         await session.rollback()
-        await message.answer(f"Lỗi: {e}")
+        await message.reply(f"{message.from_user.mention_html()} ❌ Lỗi: {e}", parse_mode="HTML")
 
 
 # ============ Callback Handlers ============
