@@ -66,8 +66,14 @@ class Settings(BaseSettings):
 
     @property
     def jobstore_url(self) -> str:
-        """Return job store URL, fallback to DATABASE_URL."""
-        return self.SCHEDULER_JOBSTORE_URL or self.DATABASE_URL.replace("+aiosqlite", "")
+        """Return job store URL for APScheduler (sync driver required)."""
+        if self.SCHEDULER_JOBSTORE_URL:
+            return self.SCHEDULER_JOBSTORE_URL
+        # Convert async URL to sync: asyncpg -> psycopg2, aiosqlite -> sqlite
+        url = self.DATABASE_URL
+        url = url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+        url = url.replace("sqlite+aiosqlite://", "sqlite://")
+        return url
 
 
 settings = Settings()
