@@ -19,7 +19,7 @@ def create_bot() -> Bot:
 
 def create_dispatcher() -> Dispatcher:
     """Create dispatcher with routers and middlewares."""
-    from src.bot.handlers import commands_router, tasks_router, callbacks_router
+    from src.bot.handlers import commands_router, tasks_router, callbacks_router, group_tasks_router
     from src.bot.middlewares import AuthMiddleware, RateLimitMiddleware
 
     # Use RedisStorage for FSM state persistence
@@ -34,6 +34,7 @@ def create_dispatcher() -> Dispatcher:
     # Register routers
     dp.include_router(commands_router)
     dp.include_router(tasks_router)
+    dp.include_router(group_tasks_router)
     dp.include_router(callbacks_router)
 
     return dp
